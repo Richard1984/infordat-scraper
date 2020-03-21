@@ -2,6 +2,7 @@ output.csv
 anac.png
 infordat.png
 .DS_Store
+.env
 
 # Logs
 logs

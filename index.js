@@ -1,8 +1,11 @@
+const dotenv = require('dotenv')
 const puppeteer = require('puppeteer')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const colors = require('colors')
+
+dotenv.config()
 
 const filename = path.join(__dirname, 'output.csv');
 
@@ -11,7 +14,7 @@ const filename = path.join(__dirname, 'output.csv');
 
   const cookie = {
     name: '.AspNet.ApplicationCookie',
-    value: 'value',
+    value: process.env.INFORDAT_COOKIE,
     path: '/',
     domain: '.infordat.it'
   }
@@ -49,7 +52,7 @@ const filename = path.join(__dirname, 'output.csv');
     await dettaglio.goto('https://infordat.it/bancadati/dettaglioribasso?numgara=' + data[i].numero)
     await dettaglio.screenshot({ path: 'infordat.png' })
 
-    console.log('\n' + i + 1 + ' di ' + data.length)
+    console.log('\n' + ++i + ' di ' + data.length)
 
     try {
       const cig = await dettaglio.$eval('.col-md-3 > .list-group > .list-group-item:last-child', el => el.textContent.split(':')[1].trim())
