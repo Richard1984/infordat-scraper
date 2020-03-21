@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const colors = require('colors')
 
 const filename = path.join(__dirname, 'output.csv');
 
@@ -15,12 +16,12 @@ const filename = path.join(__dirname, 'output.csv');
     domain: '.infordat.it'
   }
 
-  const page = await browser.newPage()
-  await page.setCookie(cookie)
+  const infordat = await browser.newPage()
+  await infordat.setCookie(cookie)
 
-  await page.goto('https://infordat.it/bancadati/ribassovincente?Categ=OG1&Luoghi=FR%3BLT%3BRI%3BRM%3BVT')
+  await infordat.goto('https://infordat.it/bancadati/ribassovincente?Categ=OG1&Luoghi=FR%3BLT%3BRI%3BRM%3BVT')
 
-  const data = await page.evaluate(() => {
+  const data = await infordat.evaluate(() => {
     const rows = document.querySelectorAll('#risultati_ribasso > tr')
     const data = []
 
@@ -40,34 +41,53 @@ const filename = path.join(__dirname, 'output.csv');
     return data
   })
 
-  const tab = await browser.newPage()
-  await tab.setCookie(cookie)
+  const dettaglio = await browser.newPage()
+  const anac = await browser.newPage()
+  await dettaglio.setCookie(cookie)
 
   for (let i = 0; i < data.length; i++) {
-    await tab.goto('https://infordat.it/bancadati/dettaglioribasso?numgara=' + data[i].numero)
-    await tab.screenshot({ path: 'example.png' })
+    await dettaglio.goto('https://infordat.it/bancadati/dettaglioribasso?numgara=' + data[i].numero)
+    await dettaglio.screenshot({ path: 'infordat.png' })
 
-    console.log(i + 1 + ' di ' + data.length)
+    console.log('\n' + i + 1 + ' di ' + data.length)
 
     try {
-      const cig = await tab.$eval('.col-md-3 > .list-group > .list-group-item:nth-child(6)', el => el.textContent.split(':')[1].trim())
+      const cig = await dettaglio.$eval('.col-md-3 > .list-group > .list-group-item:last-child', el => el.textContent.split(':')[1].trim())
       data[i].cig = cig
+      console.log(colors.green('CIG: ' + data[i].cig))
+      console.log(colors.yellow(data[i].titolo))
     } catch (e) {
-      console.log('Impossibile reperire il CIG.')
+      console.log(colors.red('Impossibile reperire il CIG.'))
+    }
+
+    // await infordat.close()
+
+    try {
+      if (!data[i].cig) throw new Error()
+      await anac.goto(`http://portaletrasparenza.anticorruzione.it/Microstrategy/asp/Main.aspx?evt=2048001&src=Main.aspx.2048001&visMode=0&hiddenSections=header,footer,path,dockTop&documentID=0E392EF94E86CCDD246176A3580200AB&valuePromptAnswers=${data[i].cig}&currentViewMedia=2&Main.aspx=-10*.119*.128*.95.SISk*_Extranet.0_&shared=*-1.*-1.0.0.0&ftb=0.422541B24E28B69DC5DF858B20E67091.*0.8.0.0-8.18_268453447.*-1.1.*0&fb=0.422541B24E28B69DC5DF858B20E67091.Extranet.8.0.0-8.768.769.774.770.773.772.775.55.256.10.257.776.777_268453447.*-1.1.*0&uid=web&pwd=no`)
+      await anac.screenshot({ path: 'anac.png' })
+
+      data[i].nome_ente = await anac.$eval('#grid_K205_0_2_9_1 ~ td', el => el.textContent.trim())
+      data[i].cf_ente = await anac.$eval('#grid_K205_0_2_10_1 ~ td', el => el.textContent.trim())
+    } catch (e) {
+      console.log(colors.red('Impossibile reperire le informazione dalla base dati dell\'ANAC.'))
     }
   }
+
+  // await dettaglio.close()
+  // await anac.close()
 
   console.log(data)
 
   const output = []
 
   data.forEach((d) => {
-    const row = [] // a new array for each row of data
+    const row = []
     Object.keys(d).forEach(key => {
       row.push(d[key])
     })
 
-    output.push(row.join()) // by default, join() uses a ','
+    output.push(row.join())
   })
 
   fs.writeFileSync(filename, output.join(os.EOL))
