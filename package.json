@@ -1,10 +1,10 @@
 {
-  "name": "scaper",
+  "name": "infordat-scraper",
   "version": "1.0.0",
-  "description": "",
+  "description": "Web Scraper per i dati storici sui ribassi.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "author": "Riccardo Sangiorgio <richard.sangiorgio@gmail.com>",
   "license": "MIT",
